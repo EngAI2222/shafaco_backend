@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>لوحة تقارير الصيانة — شفاكو</title>
+  <meta name="description" content="لوحة تحكم لعرض تقارير الصيانة المُستخرجة من التسجيلات الصوتية." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset & tokens ─────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --clr-bg:        #0d0f1a;
+      --clr-surface:   #161929;
+      --clr-card:      #1e2235;
+      --clr-border:    #2a2f4a;
+      --clr-accent:    #5b6ef5;
+      --clr-accent2:   #8b5cf6;
+      --clr-text:      #e4e8ff;
+      --clr-muted:     #7880a8;
+      --clr-ok:        #22c55e;
+      --clr-warn:      #f59e0b;
+      --clr-crit:      #ef4444;
+      --radius:        14px;
+      --transition:    0.25s ease;
+    }
+
+    html { font-size: 16px; }
+    body {
+      font-family: 'Cairo', sans-serif;
+      background: var(--clr-bg);
+      color: var(--clr-text);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* ── Scrollbar ──────────────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--clr-bg); }
+    ::-webkit-scrollbar-thumb { background: var(--clr-border); border-radius: 99px; }
+
+    /* ── Header ─────────────────────────────────────────────────────────── */
+    header {
+      background: linear-gradient(135deg, #1a1f3c 0%, #0d0f1a 100%);
+      border-bottom: 1px solid var(--clr-border);
+      padding: 1.25rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(10px);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .logo-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--clr-accent), var(--clr-accent2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+    }
+
+    .logo-text h1 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--clr-text);
+    }
+
+    .logo-text span {
+      font-size: 0.75rem;
+      color: var(--clr-muted);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .btn {
+      padding: 0.5rem 1.1rem;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all var(--transition);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--clr-accent), var(--clr-accent2));
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(91,110,245,0.35);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(91,110,245,0.5);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--clr-muted);
+      border: 1px solid var(--clr-border);
+    }
+
+    .btn-ghost:hover {
+      color: var(--clr-text);
+      border-color: var(--clr-accent);
+    }
+
+    /* ── Main layout ─────────────────────────────────────────────────────── */
+    main {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    /* ── Stats row ──────────────────────────────────────────────────────── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: var(--clr-card);
+      border: 1px solid var(--clr-border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      transition: transform var(--transition), box-shadow var(--transition);
+    }
+
+    .stat-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    }
+
+    .stat-label {
+      font-size: 0.78rem;
+      color: var(--clr-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .stat-card.total .stat-value  { color: var(--clr-accent); }
+    .stat-card.ok    .stat-value  { color: var(--clr-ok); }
+    .stat-card.warn  .stat-value  { color: var(--clr-warn); }
+    .stat-card.crit  .stat-value  { color: var(--clr-crit); }
+
+    /* ── Section header ─────────────────────────────────────────────────── */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+    }
+
+    .section-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--clr-text);
+    }
+
+    /* ── Search bar ─────────────────────────────────────────────────────── */
+    .search-wrap {
+      position: relative;
+    }
+
+    .search-wrap input {
+      background: var(--clr-card);
+      border: 1px solid var(--clr-border);
+      border-radius: 8px;
+      color: var(--clr-text);
+      font-family: inherit;
+      font-size: 0.85rem;
+      padding: 0.55rem 1rem 0.55rem 2.4rem;
+      width: 260px;
+      transition: border-color var(--transition);
+      outline: none;
+    }
+
+    .search-wrap input:focus { border-color: var(--clr-accent); }
+    .search-wrap input::placeholder { color: var(--clr-muted); }
+
+    .search-icon {
+      position: absolute;
+      left: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--clr-muted);
+      pointer-events: none;
+      font-size: 0.9rem;
+    }
+
+    /* ── Table ──────────────────────────────────────────────────────────── */
+    .table-wrapper {
+      background: var(--clr-card);
+      border: 1px solid var(--clr-border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 720px;
+    }
+
+    thead {
+      background: linear-gradient(90deg, #1a1f3c 0%, #161929 100%);
+    }
+
+    th {
+      padding: 0.9rem 1rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--clr-muted);
+      text-align: right;
+      white-space: nowrap;
+      border-bottom: 1px solid var(--clr-border);
+      letter-spacing: 0.04em;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--clr-border);
+      transition: background var(--transition);
+    }
+
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(91,110,245,0.05); }
+
+    td {
+      padding: 0.85rem 1rem;
+      font-size: 0.88rem;
+      vertical-align: middle;
+      color: var(--clr-text);
+    }
+
+    td.muted { color: var(--clr-muted); font-size: 0.8rem; }
+
+    /* ── Status badge ───────────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.7rem;
+      border-radius: 99px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .badge::before {
+      content: '';
+      display: block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .badge-ok   { background: rgba(34,197,94,0.15);  color: var(--clr-ok);   }
+    .badge-ok::before   { background: var(--clr-ok); }
+    .badge-warn { background: rgba(245,158,11,0.15); color: var(--clr-warn); }
+    .badge-warn::before { background: var(--clr-warn); }
+    .badge-crit { background: rgba(239,68,68,0.15);  color: var(--clr-crit); }
+    .badge-crit::before { background: var(--clr-crit); }
+
+    /* ── Audio button ───────────────────────────────────────────────────── */
+    .audio-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: rgba(91,110,245,0.15);
+      color: var(--clr-accent);
+      border: 1px solid rgba(91,110,245,0.3);
+      border-radius: 6px;
+      padding: 0.3rem 0.7rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all var(--transition);
+    }
+
+    .audio-btn:hover {
+      background: rgba(91,110,245,0.3);
+      transform: translateY(-1px);
+    }
+
+    /* ── Empty state ────────────────────────────────────────────────────── */
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--clr-muted);
+    }
+
+    .empty-state .empty-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      opacity: 0.4;
+    }
+
+    .empty-state p { font-size: 0.9rem; }
+
+    /* ── Loading skeleton ───────────────────────────────────────────────── */
+    @keyframes shimmer {
+      0%   { background-position: -600px 0; }
+      100% { background-position:  600px 0; }
+    }
+
+    .skeleton {
+      background: linear-gradient(90deg, var(--clr-card) 25%, var(--clr-border) 50%, var(--clr-card) 75%);
+      background-size: 1200px 100%;
+      animation: shimmer 1.6s infinite;
+      border-radius: 6px;
+      height: 16px;
+      display: inline-block;
+    }
+
+    /* ── Snackbar ───────────────────────────────────────────────────────── */
+    #snackbar {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--clr-card);
+      border: 1px solid var(--clr-border);
+      border-radius: 10px;
+      padding: 0.8rem 1.5rem;
+      font-size: 0.88rem;
+      color: var(--clr-text);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+      transition: transform 0.3s ease;
+      z-index: 999;
+    }
+
+    #snackbar.show { transform: translateX(-50%) translateY(0); }
+
+    /* ── Responsive ─────────────────────────────────────────────────────── */
+    @media (max-width: 640px) {
+      header { padding: 1rem; }
+      main   { padding: 1rem 0.75rem 3rem; }
+      .search-wrap input { width: 100%; }
+      .section-header { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ Header ══════════════════════════════════════════════════════════════ -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🔧</div>
+    <div class="logo-text">
+      <h1>شفاكو</h1>
+      <span>نظام إدارة تقارير الصيانة</span>
+    </div>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-ghost" id="refreshBtn" onclick="loadReports()">↻ تحديث</button>
+  </div>
+</header>
+
+<!-- ══ Main ════════════════════════════════════════════════════════════════ -->
+<main>
+
+  <!-- Stats -->
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-card total">
+      <span class="stat-label">إجمالي التقارير</span>
+      <span class="stat-value" id="statTotal"><span class="skeleton" style="width:40px"></span></span>
+    </div>
+    <div class="stat-card ok">
+      <span class="stat-label">طبيعي</span>
+      <span class="stat-value" id="statOk"><span class="skeleton" style="width:30px"></span></span>
+    </div>
+    <div class="stat-card warn">
+      <span class="stat-label">يحتاج متابعة</span>
+      <span class="stat-value" id="statWarn"><span class="skeleton" style="width:30px"></span></span>
+    </div>
+    <div class="stat-card crit">
+      <span class="stat-label">عطل حرج</span>
+      <span class="stat-value" id="statCrit"><span class="skeleton" style="width:30px"></span></span>
+    </div>
+  </div>
+
+  <!-- Table section -->
+  <div class="section-header">
+    <span class="section-title">📋 سجل التقارير</span>
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input id="searchInput" type="text" placeholder="بحث في التقارير..." oninput="filterTable()" />
+    </div>
+  </div>
+
+  <div class="table-wrapper">
+    <table id="reportsTable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>المهندس / الفني</th>
+          <th>المعدة / الغرفة</th>
+          <th>الإجراء المنفذ</th>
+          <th>الحالة</th>
+          <th>التاريخ</th>
+          <th>الصوت</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody">
+        <!-- Rows injected by JS -->
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<div id="snackbar"></div>
+
+<script>
+  /* ── Utility ─────────────────────────────────────────────────────────── */
+
+  function showSnack(msg) {
+    const el = document.getElementById('snackbar');
+    el.textContent = msg;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 3000);
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleDateString('ar-SA', {
+      year: 'numeric', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    });
+  }
+
+  function statusBadge(status) {
+    const map = {
+      'طبيعي':         { cls: 'badge-ok',   label: 'طبيعي' },
+      'يحتاج متابعة':  { cls: 'badge-warn', label: 'يحتاج متابعة' },
+      'عطل حرج':       { cls: 'badge-crit', label: 'عطل حرج' },
+    };
+    const s = map[status] || { cls: 'badge-warn', label: status || '—' };
+    return `<span class="badge ${s.cls}">${s.label}</span>`;
+  }
+
+  /* ── Data loading ────────────────────────────────────────────────────── */
+
+  let allReports = [];
+
+  async function loadReports() {
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = `
+      <tr><td colspan="7">
+        <div style="text-align:center;padding:3rem;color:var(--clr-muted)">
+          <div class="skeleton" style="width:200px;margin:auto"></div>
+          <p style="margin-top:0.75rem;font-size:0.85rem">جارٍ تحميل البيانات…</p>
+        </div>
+      </td></tr>`;
+
+    try {
+      const res  = await fetch('/api/reports');
+      const json = await res.json();
+
+      if (!res.ok) throw new Error(json.detail || 'خطأ في الخادم');
+
+      allReports = json.reports || [];
+      renderTable(allReports);
+      updateStats(allReports);
+    } catch (err) {
+      tbody.innerHTML = `
+        <tr><td colspan="7">
+          <div class="empty-state">
+            <div class="empty-icon">⚠️</div>
+            <p>فشل تحميل التقارير: ${err.message}</p>
+          </div>
+        </td></tr>`;
+      showSnack('⚠️ تعذّر جلب البيانات');
+    }
+  }
+
+  function renderTable(reports) {
+    const tbody = document.getElementById('tableBody');
+
+    if (!reports.length) {
+      tbody.innerHTML = `
+        <tr><td colspan="7">
+          <div class="empty-state">
+            <div class="empty-icon">📂</div>
+            <p>لا توجد تقارير حتى الآن. ارفع تسجيلاً صوتياً عبر التطبيق للبدء.</p>
+          </div>
+        </td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = reports.map((r, i) => `
+      <tr>
+        <td class="muted">${r.id ?? i + 1}</td>
+        <td><strong>${escHtml(r.engineer_name || 'غير محدد')}</strong></td>
+        <td>${escHtml(r.equipment || '—')}</td>
+        <td style="max-width:280px;white-space:normal">${escHtml(r.action_taken || '—')}</td>
+        <td>${statusBadge(r.status)}</td>
+        <td class="muted">${formatDate(r.created_at)}</td>
+        <td>
+          ${r.audio_path
+            ? `<a class="audio-btn" href="${escHtml(r.audio_path)}" target="_blank">▶ تشغيل</a>`
+            : '<span style="color:var(--clr-muted);font-size:0.8rem">—</span>'}
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function updateStats(reports) {
+    document.getElementById('statTotal').textContent = reports.length;
+    document.getElementById('statOk').textContent   = reports.filter(r => r.status === 'طبيعي').length;
+    document.getElementById('statWarn').textContent  = reports.filter(r => r.status === 'يحتاج متابعة').length;
+    document.getElementById('statCrit').textContent  = reports.filter(r => r.status === 'عطل حرج').length;
+  }
+
+  /* ── Search / filter ─────────────────────────────────────────────────── */
+
+  function filterTable() {
+    const q = document.getElementById('searchInput').value.trim().toLowerCase();
+    if (!q) { renderTable(allReports); return; }
+
+    const filtered = allReports.filter(r =>
+      [r.engineer_name, r.equipment, r.action_taken, r.status, r.raw_text]
+        .some(v => v && v.toLowerCase().includes(q))
+    );
+    renderTable(filtered);
+  }
+
+  /* ── Helpers ─────────────────────────────────────────────────────────── */
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  /* ── Bootstrap ───────────────────────────────────────────────────────── */
+  loadReports();
+</script>
+
+</body>
+</html>
