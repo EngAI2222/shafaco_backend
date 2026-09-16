@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-from ai_service import extract_report_data, transcribe_audio
+from ai_service import process_audio_report
 from database import Report, get_db, init_db
 
 load_dotenv()
@@ -110,25 +110,18 @@ async def upload_audio(
     # Relative URL path to serve the file via the /static mount
     audio_url = f"/static/uploads/{unique_filename}"
 
-    # ---- AI processing -----------------------------------------------------
+    # ---- AI processing (single Gemini call: transcription + extraction) ----
     try:
-        raw_text = transcribe_audio(str(save_path))
+        report_data = process_audio_report(str(save_path))
     except FileNotFoundError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
-    except Exception as exc:
-        raise HTTPException(
-            status_code=502, detail=f"Whisper transcription failed: {exc}"
-        ) from exc
-
-    try:
-        report_data = extract_report_data(raw_text)
     except ValueError as exc:
         raise HTTPException(
-            status_code=502, detail=f"GPT extraction failed: {exc}"
+            status_code=502, detail=f"Gemini returned invalid JSON: {exc}"
         ) from exc
     except Exception as exc:
         raise HTTPException(
-            status_code=502, detail=f"Report extraction failed: {exc}"
+            status_code=502, detail=f"Gemini processing failed: {exc}"
         ) from exc
 
     # ---- Override engineer_name if provided explicitly in the form ----------
@@ -140,7 +133,7 @@ async def upload_audio(
     try:
         new_report = Report(
             engineer_name=final_engineer_name,
-            raw_text=raw_text,
+            raw_text=report_data.get("raw_text", ""),
             equipment=report_data.get("equipment", ""),
             action_taken=report_data.get("action_taken", ""),
             status=report_data.get("status", "طبيعي"),
